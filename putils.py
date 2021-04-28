@@ -1,8 +1,10 @@
 # plot utils para SINDy
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
+from scipy.fft import fft
 from mpl_toolkits.mplot3d import Axes3D
 
 def solve(func,t,x0,method='DOP853',args=None):
@@ -41,13 +43,42 @@ def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]]):
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs[1].grid()
 
+def plot2D_labels_fft(t,x,fmax,labels,ranges=[[-1,1],[-1,1]]):    
+    plot_kws = dict(linewidth=2)
+    fig = plt.figure(figsize=(18, 8))
+    gd = gridspec.GridSpec(2, 2)
+    axs1 = plt.subplot(gd[0,0])
+    axs2 = plt.subplot(gd[1,0])
+    axs3 = plt.subplot(gd[:,1])
+    axs1.plot(t[::10], x[::10, 0], "r", label="$x_0$", **plot_kws)
+    axs1.plot(t[::10], x[::10, 1], "b", label="$x_1$", alpha=0.4, **plot_kws)
+    axs1.legend()
+    axs1.set(xlabel="t", ylabel="$x_k$")
+    axs3.plot(x[:, 0], x[:, 1], "r", label="$x_k$", **plot_kws)
+    axs3.legend()
+    axs3.plot(x[0, 0], x[0, 1], "ro")
+    axs3.set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
+    axs3.grid()
+    fnyq = 0.5/(t[1]-t[0])
+    df = fnyq/len(t)
+    f = np.arange(0,fnyq,df)
+    y0 = np.abs(fft(x[:,0]))
+    y1 = np.abs(fft(x[:,1]))
+    axs2.plot(f, 20*np.log10(y0), "r", label="$fft(x_0)$", **plot_kws)
+    axs2.plot(f, 20*np.log10(y1), "b", label="$fft(x_1)$", alpha=0.4, **plot_kws)
+    axs2.legend()
+    axs2.set(xlabel="t", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])    
     
-def solve_plot(system,pars,xini,tmax,dt):
+    
+def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=False):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
     x = solve(system, t, xini, args=args, method='RK45')
-    plot2D_labels(t,x,labels)    
+    if wfft:
+        plot2D_labels_fft(t,x,fmax,labels,ranges)
+    else:    
+        plot2D_labels(t,x,labels,ranges)    
 
     
  # doble oscilador    
