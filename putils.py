@@ -1,4 +1,4 @@
-# plot utils para SINDy
+# plot utils para SINDy y curso DNL
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
