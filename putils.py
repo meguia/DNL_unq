@@ -1,6 +1,7 @@
 # plot utils para SINDy y curso DNL
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.colors as mcolors
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
@@ -17,6 +18,80 @@ def findperiod(t,x):
     peaks, _ = find_peaks(x)
     per = np.diff(t[peaks])
     return np.mean(per)
+
+## MAPAS
+
+def map_plot(f, xini, N, *pars):
+    fig, ax = plt.subplots(figsize=(20,5))
+    for x in xini:
+        xn = [x]
+        for t in range(N):
+            x = f(x,*pars)
+            xn.append(x)
+        ax.plot(xn,'-o');
+    plt.grid()  
+
+def cobweb(f, xini, N, *pars, fscale=1.25):
+    '''
+    Hace el grafico cobweb de la funcion f para la condicion inicial x0 durante N iteraciones del mapa
+    '''
+    if type(xini) not in [list,np.ndarray]:
+        xini = [xini]
+    (xmax,xmin)=[0,0]
+    fig, ax = plt.subplots(figsize=(20,10))
+    tabcolors = list(mcolors.TABLEAU_COLORS)
+    for m,x in enumerate(xini):
+        xn = [x]
+        for n in range(N):
+            x = f(x,*pars)
+            xn.append(x)
+        (xmax,xmin) = [max(np.max(xn),xmax), min(np.min(xn),xmin)]
+        clr = tabcolors[m%10]
+        ax.scatter(xn[0],0,30,clr)
+        ax.scatter(xn[:-1],xn[1:],10,clr)
+        ax.scatter(xn[1:],xn[1:],10,clr)
+        ax.vlines(xn[0],0,xn[1],clr,linewidths=0.5)
+        ax.hlines(xn[1:],xn[:-1],xn[1:],clr,linewidths=0.5)
+        ax.vlines(xn[1:-1],xn[1:-1],xn[2:],clr,linewidths=0.5)
+    xrange=xmax-xmin
+    # arrays para graficar x y f(x) con 300 pts en el grafico
+    xarr = np.linspace(xmin-(fscale-1)*xrange,xmax+(fscale-1)*xrange,num=300)
+    yarr = f(xarr,*pars)
+    (ymax,ymin) = [max(np.max(yarr),xarr[-1]), min(np.min(yarr),xarr[0])]
+    ax.plot(xarr,yarr,'-k')
+    ax.plot(xarr,xarr,'--k')
+    if xarr[0]<0<xarr[-1]:
+        ax.spines['left'].set_position('zero')
+        ax.yaxis.set_ticks_position('left')
+    ax.spines['bottom'].set_position('zero')
+    ax.xaxis.set_ticks_position('bottom')
+
+def orbitdiag(f, xini, Tini, Tfin, parlist, fscale=1,msize=5,AMAX=1e2,alphaval=1):
+    ''' Grafica el diagrama de orbitas del mapa dado por f para las condiciones iniciales 
+    xini luego de un transitorio de Tini pasos. parlist es la lista de valores de parametros
+    '''
+    fig, ax = plt.subplots(figsize=(20,10))
+    xmin = 0
+    xmax = 0
+    for p in parlist:
+        for x in xini:
+            t = 0
+            while t<Tini and np.abs(x)<AMAX:
+                x = f(x,p)
+                t += 1
+            xn = [x]  
+            while t<Tfin and np.abs(x)<AMAX:
+                x = f(x,p)
+                xn.append(x)
+                t += 1   
+            if (t>=Tini):    
+                ax.plot([p]*len(xn),xn,'.', markersize=msize,alpha=alphaval); 
+                xmax = max(np.max(xn),xmax)
+                xmin = min(np.min(xn),xmin)
+    ax.set_ylim([xmin*fscale,xmax*fscale])
+    
+## Flujos    
+
 
 def plot2D_test(t,x_test):    
     plot_kws = dict(linewidth=2)
