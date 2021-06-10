@@ -117,6 +117,13 @@ def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]]):
     axs[1].plot(x[0, 0], x[0, 1], "ro")
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs[1].grid()
+    
+def plot1D_labels(t,x,labels,ranges=[-1,1]):    
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 1, figsize=(18, 8))
+    axs.plot(t, x[:, 0], "b", label="$x_0$", **plot_kws)
+    axs.legend()
+    axs.grid()    
 
 def plot2D_labels_fft(t,x,fmax,labels,ranges=[[-1,1],[-1,1]]):    
     plot_kws = dict(linewidth=2)
@@ -150,13 +157,72 @@ def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=Fal
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
     x = solve(system, t, xini, args=args, method='RK45')
-    if wfft:
-        plot2D_labels_fft(t,x,fmax,labels,ranges)
+    if len(xini) == 1:
+        plot1D_labels(t,x,labels,ranges)
     else:    
-        plot2D_labels(t,x,labels,ranges)    
-
+        if wfft:
+            plot2D_labels_fft(t,x,fmax,labels,ranges)
+        else:    
+            plot2D_labels(t,x,labels,ranges)  
+            
+def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1]):
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 1, figsize=(18, 8))
+    axs.grid()  
+    for n,xini in enumerate(xini_array):
+        x = solve(system, t, [xini], args=args, method='RK45')
+        axs.plot(t[:len(x)], x[:, 0], **plot_kws)
+        axs.set_ylim(xrange)
     
- # doble oscilador    
+
+            
+def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0):
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    x0 = np.linspace(xrange[0],xrange[1],100)
+    f = system(t,x0,*args)
+    x = solve(system, t, xini, args=args, method='RK45')
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
+    axs[0].plot(x0, f[0], "k", label="$f(x)$", **plot_kws)
+    axs[0].plot(x0, 0*f[0], "r", label="$0$", **plot_kws)
+    axs[0].plot(x[:,0], 0*x[:,0], "b.", label="$x$", **plot_kws)
+    axs[0].set_xlim(xrange)
+    axs[0].grid()   
+    axs[1].plot(t[:len(x)], x[:, 0], "b", label="$x_0$", **plot_kws)
+    axs[1].legend()
+    axs[1].set_ylim(xrange)
+    axs[1].grid()   
+
+# diagrama de bifurcaciones para flujos 1D
+def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist, xrange=[-1,1], msize=5, fscale=1):
+    ''' Grafica el diagrama de bifurcaciones del flujo de systems evolucionando para atras 
+    y para adelante en el tiempo y usando xrange como bound.
+    pars es la lista de parametros fijos parval es el nombre del parametro a variar y parlist es la lista de 
+    valores de ese parametro
+    '''
+    fig, ax = plt.subplots(figsize=(20,10))
+    ax.grid()
+    t = np.arange(0, tmax, dt)
+    for p in parlist:
+        print(p)
+        pars[parval]=p
+        args = tuple(pars.values())
+        for xini in xini_list:
+            x = solve(system, t, [xini], args=args, method='RK45')
+            pt = x[-1,0]
+            if pt<xrange[1] and pt>xrange[0]:
+                ax.plot(p,pt,'b.', markersize=msize); 
+            x = solve(system, -t, [xini], args=args, method='RK45')
+            pt = x[-1,0]
+            if pt<xrange[1] and pt>xrange[0]:
+                ax.plot(p,pt,'r.', markersize=msize); 
+    
+# doble oscilador    
 def plot4D_test(t,x_test):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(2, 2, figsize=(18, 16))
@@ -192,8 +258,6 @@ def plot4D_labels(t,x,labels,ranges,curves=[]):
     for c in curves:
         axs[1,1].plot(c[0],c[1])        
         
- 
-# grafica train y sim y compara 
 def testsim(model,func,t,x0, method='DOP853'):
     x_test = solve(func, t, x0, method=method)
     x_sim = model.simulate(x0, t)
