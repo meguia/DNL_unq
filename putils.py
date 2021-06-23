@@ -9,10 +9,21 @@ from scipy.fft import fft
 from mpl_toolkits.mplot3d import Axes3D
 
 def solve(func,t,x0,method='DOP853',args=None):
-    sol = solve_ivp(func, t[[0,-1]], x0, method=method, t_eval=t, args=args)
+    dt = np.abs(t[1]-t[0])
+    sol = solve_ivp(func, t[[0,-1]], x0, method=method, t_eval=t, args=args,max_step=dt,dense_output=True)
     if sol.status < 0:
         print(sol.message)
     return sol.y.T
+
+def var_apply(x,var):
+    if var=='angle':
+        return (x+np.pi)%(2*np.pi)-np.pi
+    if var=='cos':
+        return np.cos(x%(2*np.pi))
+    if var=='sin':
+        return np.sin(x%(2*np.pi))
+    else:
+        return x
 
 def findperiod(t,x):
     peaks, _ = find_peaks(x)
@@ -122,6 +133,7 @@ def plot1D_labels(t,x,labels,ranges=[-1,1]):
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 1, figsize=(18, 8))
     axs.plot(t, x[:, 0], "b", label="$x_0$", **plot_kws)
+    axs.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
     axs.legend()
     axs.grid()    
 
@@ -152,11 +164,16 @@ def plot2D_labels_fft(t,x,fmax,labels,ranges=[[-1,1],[-1,1]]):
     axs2.set(xlabel="t", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])    
     
     
-def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=False):
+def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=False,var=None,method='RK45',trans=None):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
-    x = solve(system, t, xini, args=args, method='RK45')
+    x = solve(system, t, xini, args=args, method=method)
+    if trans is not None:
+        t0 = int(trans/dt)
+        x = x[t0:,:]
+        t = t[t0:]
+    x = var_apply(x,var)
     if len(xini) == 1:
         plot1D_labels(t,x,labels,ranges)
     else:    
@@ -165,7 +182,7 @@ def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=Fal
         else:    
             plot2D_labels(t,x,labels,ranges)  
             
-def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1]):
+def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1],var=None,method='RK45'):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
@@ -173,33 +190,37 @@ def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1]):
     fig, axs = plt.subplots(1, 1, figsize=(18, 8))
     axs.grid()  
     for n,xini in enumerate(xini_array):
-        x = solve(system, t, [xini], args=args, method='RK45')
+        x = solve(system, t, [xini], args=args, method=method)
+        x = var_apply(x,var)
         axs.plot(t[:len(x)], x[:, 0], **plot_kws)
         axs.set_ylim(xrange)
-    
+    axs.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
 
             
-def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0):
+def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0,var=None,method='RK45'):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
     x0 = np.linspace(xrange[0],xrange[1],100)
     f = system(t,x0,*args)
-    x = solve(system, t, xini, args=args, method='RK45')
+    x = solve(system, t, xini, args=args, method=method)
+    x = var_apply(x,var)
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 2, figsize=(18, 8))
     axs[0].plot(x0, f[0], "k", label="$f(x)$", **plot_kws)
     axs[0].plot(x0, 0*f[0], "r", label="$0$", **plot_kws)
-    axs[0].plot(x[:,0], 0*x[:,0], "b.", label="$x$", **plot_kws)
+    axs[0].plot(x[:,0], 0*x[:,0], "b", label="$x$", **plot_kws)
+    axs[0].set(xlabel="$x0$", ylabel="$f(x_0)$",title=labels) 
     axs[0].set_xlim(xrange)
     axs[0].grid()   
     axs[1].plot(t[:len(x)], x[:, 0], "b", label="$x_0$", **plot_kws)
+    axs[1].set(xlabel="$t$", ylabel="$x_0$",title=labels) 
     axs[1].legend()
     axs[1].set_ylim(xrange)
     axs[1].grid()   
 
 # diagrama de bifurcaciones para flujos 1D
-def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist, xrange=[-1,1], msize=5, fscale=1):
+def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,xrange=[-1,1],msize=5,var=None,method='RK45'):
     ''' Grafica el diagrama de bifurcaciones del flujo de systems evolucionando para atras 
     y para adelante en el tiempo y usando xrange como bound.
     pars es la lista de parametros fijos parval es el nombre del parametro a variar y parlist es la lista de 
@@ -216,10 +237,12 @@ def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist, xrange=
             x = solve(system, t, [xini], args=args, method='RK45')
             pt = x[-1,0]
             if pt<xrange[1] and pt>xrange[0]:
+                x = var_apply(x,var)
                 ax.plot(p,pt,'b.', markersize=msize); 
             x = solve(system, -t, [xini], args=args, method='RK45')
             pt = x[-1,0]
             if pt<xrange[1] and pt>xrange[0]:
+                x = var_apply(x,var)
                 ax.plot(p,pt,'r.', markersize=msize); 
     
 # doble oscilador    
