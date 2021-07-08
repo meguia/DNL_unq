@@ -129,23 +129,40 @@ def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]]):
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs[1].grid()
     
-def plot1D_labels(t,x,labels,ranges=[-1,1]):    
+def plot1D_labels(t,x,labels,ranges=[-1,1],var=''):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 1, figsize=(18, 8))
-    axs.plot(t, x[:, 0], "b", label="$x_0$", **plot_kws)
-    axs.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
+    axs.plot(t, x[:, 0], "b", label=var+' x', **plot_kws)
+    axs.set(xlabel="$t$", ylabel=var+' x',title=labels) 
     axs.legend()
     axs.grid()    
+    
+def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):    
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
+    axs[0].plot(t, x[:,0], "r", label=var+' x', **plot_kws)
+    axs[0].legend()
+    axs[0].set(xlabel="t", ylabel=var+' x')
+    fnyq = 0.5/(t[1]-t[0])
+    if fmax is None:
+        fmax=fnyq
+    df = 2*fnyq/len(t)
+    f = np.arange(0,fnyq,df)
+    y = np.abs(fft(x[:,0]))
+    y = y[:len(f)]
+    axs[1].plot(f, 20*np.log10(y), "r", label="$fft$", **plot_kws)
+    axs[1].legend()
+    axs[1].set(xlabel="t", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])        
 
-def plot2D_labels_fft(t,x,fmax,labels,ranges=[[-1,1],[-1,1]]):    
+def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):    
     plot_kws = dict(linewidth=2)
     fig = plt.figure(figsize=(18, 8))
     gd = gridspec.GridSpec(2, 2)
     axs1 = plt.subplot(gd[0,0])
     axs2 = plt.subplot(gd[1,0])
     axs3 = plt.subplot(gd[:,1])
-    axs1.plot(t[::10], x[::10, 0], "r", label="$x_0$", **plot_kws)
-    axs1.plot(t[::10], x[::10, 1], "b", label="$x_1$", alpha=0.4, **plot_kws)
+    axs1.plot(t, x[:, 0], "r", label="$x_0$", **plot_kws)
+    axs1.plot(t, x[:, 1], "b", label="$x_1$", alpha=0.4, **plot_kws)
     axs1.legend()
     axs1.set(xlabel="t", ylabel="$x_k$")
     axs3.plot(x[:, 0], x[:, 1], "r", label="$x_k$", **plot_kws)
@@ -154,17 +171,21 @@ def plot2D_labels_fft(t,x,fmax,labels,ranges=[[-1,1],[-1,1]]):
     axs3.set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs3.grid()
     fnyq = 0.5/(t[1]-t[0])
-    df = fnyq/len(t)
+    if fmax is None:
+        fmax=fnyq
+    df = 2*fnyq/len(t)
     f = np.arange(0,fnyq,df)
     y0 = np.abs(fft(x[:,0]))
     y1 = np.abs(fft(x[:,1]))
+    y0 = y0[:len(f)]
+    y1 = y1[:len(f)]
     axs2.plot(f, 20*np.log10(y0), "r", label="$fft(x_0)$", **plot_kws)
     axs2.plot(f, 20*np.log10(y1), "b", label="$fft(x_1)$", alpha=0.4, **plot_kws)
     axs2.legend()
-    axs2.set(xlabel="t", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])    
+    axs2.set(xlabel="f", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])    
     
     
-def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=False,var=None,method='RK45',trans=None):
+def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],wfft=False,var='',method='RK45',trans=None,fmax=None):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
@@ -175,10 +196,13 @@ def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],fmax=1.0,wfft=Fal
         t = t[t0:]
     x = var_apply(x,var)
     if len(xini) == 1:
-        plot1D_labels(t,x,labels,ranges)
+        if wfft:
+            plot1D_labels_fft(t,x,labels,ranges,var,fmax)
+        else: 
+            plot1D_labels(t,x,labels,ranges,var)
     else:    
         if wfft:
-            plot2D_labels_fft(t,x,fmax,labels,ranges)
+            plot2D_labels_fft(t,x,labels,ranges,fmax)
         else:    
             plot2D_labels(t,x,labels,ranges)  
             
@@ -244,7 +268,93 @@ def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,xrange=[
             if pt<xrange[1] and pt>xrange[0]:
                 x = var_apply(x,var)
                 ax.plot(p,pt,'r.', markersize=msize); 
+
+
+def solve_plot2D_multiple(system,pars,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    plot_kws = dict(linewidth=2)
+    fig = plt.figure(figsize=(18, 8))
+    gd = gridspec.GridSpec(2, 2)
+    axs1 = plt.subplot(gd[0,0])
+    axs2 = plt.subplot(gd[1,0])
+    axs3 = plt.subplot(gd[:,1])
+    axs1.grid()  
+    axs3.grid()  
+    for n,xini in enumerate(xini_array):
+        x = solve(system, t, xini, args=args, method=method)
+        axs1.plot(t[:len(x)], x[:, 0], **plot_kws)
+        axs2.plot(t[:len(x)], x[:, 1], **plot_kws)
+        axs1.set_ylim(ranges[0])
+        axs2.set_ylim(ranges[1])
+        axs3.plot(x[:, 0], x[:, 1], **plot_kws)
+        axs3.set_xlim(ranges[0])
+        axs3.set_ylim(ranges[1])
+    axs1.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
+    axs2.set(xlabel="$t$", ylabel="$x_1$",title=labels) 
+    axs3.set(xlabel="$x_0$", ylabel="$x_1$",title=labels) 
+
+def solve_plot2D_nulclinas(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    plot_kws = dict(linewidth=2)
+    fig, ax = plt.subplots(figsize=(20,10))
+    delta = (ranges[0][1]-ranges[0][0])/100
+    xrange = np.arange(ranges[0][0],ranges[0][1], delta)
+    yrange = np.arange(ranges[1][0],ranges[1][1], delta)
+    X, Y = np.meshgrid(xrange,yrange)
+    Z = system(0,[X,Y],*args)
+    ax.contour(xrange,yrange,Z[0],[0])
+    ax.contour(xrange,yrange,Z[1],[0])
+    ax.grid()  
+    x = solve(system, t, xini, args=args, method=method)
+    ax.plot(x[:, 0], x[:, 1], **plot_kws)
+    ax.set(xlabel="$x$", ylabel="$y$",title=labels)
+    ax.set_xlim(ranges[0])
+    ax.set_ylim(ranges[1])
+
     
+def solve_plot2D_linear(A,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
+    t = np.arange(0, tmax, dt)
+    pars = {'a':A[0,0],'b':A[0,1],'c':A[1,0],'d':A[1,1]}
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
+    tr = np.trace(A)
+    det = np.linalg.det(A)
+    maxtr = 1.3*np.max([np.abs(tr),2*np.sqrt(np.abs(det))])
+    maxdet = 1.3*np.max([np.abs(det),tr**2/4])
+    trv = np.linspace(-maxtr,maxtr,100)
+    trdet = np.square(trv)/4
+    axs[0].plot(tr,det,'or')
+    axs[0].plot(trv,trdet,'-b')
+    axs[0].plot(trv,trv*0,'-g')
+    axs[0].plot([0,0],[0,maxdet],'-k')
+    axs[0].grid()
+    axs[0].set(xlabel="$Tr(A)$", ylabel="$Det(A)$") 
+    axs[0].text(0, -maxdet/2, 'Saddle')
+    axs[0].text(maxtr/4, maxdet/2, 'Foco\nRepulsor')
+    axs[0].text(-maxtr/4, maxdet/2, 'Foco\nAtractor')
+    axs[0].text(3*maxtr/4, maxdet/4, 'Nodo\nRepulsor')
+    axs[0].text(-3*maxtr/4, maxdet/4, 'Nodo\nAtractor')
+    axs[0].set_xlim([-maxtr,maxtr])
+    axs[0].set_ylim([-maxdet,maxdet])
+    def system(t,x,a,b,c,d):
+        return[
+            a*x[0]+b*x[1],
+            c*x[0]+d*x[1]
+        ]
+ 
+    for n,xini in enumerate(xini_array):
+        x = solve(system, t, xini, args=args, method=method)
+        axs[1].plot(x[:, 0], x[:, 1], **plot_kws)
+    axs[1].set_xlim(ranges[0])
+    axs[1].set_ylim(ranges[1])
+    axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels) 
+        
 # doble oscilador    
 def plot4D_test(t,x_test):    
     plot_kws = dict(linewidth=2)
