@@ -30,7 +30,7 @@ def findperiod(t,x):
     per = np.diff(t[peaks])
     return np.mean(per)
 
-## MAPAS
+# # MAPAS
 
 def map_plot(f, xini, N, *pars):
     fig, ax = plt.subplots(figsize=(20,5))
@@ -100,8 +100,8 @@ def orbitdiag(f, xini, Tini, Tfin, parlist, fscale=1,msize=5,AMAX=1e2,alphaval=1
                 xmax = max(np.max(xn),xmax)
                 xmin = min(np.min(xn),xmin)
     ax.set_ylim([xmin*fscale,xmax*fscale])
-    
-## Flujos    
+
+# # Flujos    
 
 
 def plot2D_test(t,x_test):    
@@ -114,8 +114,8 @@ def plot2D_test(t,x_test):
     axs[1].plot(x_test[:, 0], x_test[:, 1], "r", label="$x_k$", **plot_kws)
     axs[1].legend()
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$")
-    
-    
+
+
 def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]]):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 2, figsize=(18, 8))
@@ -128,7 +128,7 @@ def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]]):
     axs[1].plot(x[0, 0], x[0, 1], "ro")
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs[1].grid()
-    
+
 def plot1D_labels(t,x,labels,ranges=[-1,1],var=''):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 1, figsize=(18, 8))
@@ -136,7 +136,7 @@ def plot1D_labels(t,x,labels,ranges=[-1,1],var=''):
     axs.set(xlabel="$t$", ylabel=var+' x',title=labels) 
     axs.legend()
     axs.grid()    
-    
+
 def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 2, figsize=(18, 8))
@@ -183,8 +183,8 @@ def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):
     axs2.plot(f, 20*np.log10(y1), "b", label="$fft(x_1)$", alpha=0.4, **plot_kws)
     axs2.legend()
     axs2.set(xlabel="f", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])    
-    
-    
+
+
 def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],wfft=False,var='',method='RK45',trans=None,fmax=None):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
@@ -205,7 +205,7 @@ def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],wfft=False,var=''
             plot2D_labels_fft(t,x,labels,ranges,fmax)
         else:    
             plot2D_labels(t,x,labels,ranges)  
-            
+
 def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1],var=None,method='RK45'):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
@@ -220,7 +220,7 @@ def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1],var=None,
         axs.set_ylim(xrange)
     axs.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
 
-            
+
 def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0,var=None,method='RK45'):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
@@ -243,12 +243,13 @@ def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0,var=None,m
     axs[1].set_ylim(xrange)
     axs[1].grid()   
 
-# diagrama de bifurcaciones para flujos 1D
-def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,xrange=[-1,1],msize=5,var=None,method='RK45'):
+# diagrama de bifurcaciones para flujos 1D y 2D
+def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,vi=0,xrange=[-1,1],msize=5,var=None,method='RK45'):
     ''' Grafica el diagrama de bifurcaciones del flujo de systems evolucionando para atras 
     y para adelante en el tiempo y usando xrange como bound.
     pars es la lista de parametros fijos parval es el nombre del parametro a variar y parlist es la lista de 
     valores de ese parametro
+    Para 2D se puede cambiar el indice de la variable en vi
     '''
     fig, ax = plt.subplots(figsize=(20,10))
     ax.grid()
@@ -258,13 +259,13 @@ def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,xrange=[
         pars[parval]=p
         args = tuple(pars.values())
         for xini in xini_list:
-            x = solve(system, t, [xini], args=args, method='RK45')
-            pt = x[-1,0]
+            x = solve(system, t, xini, args=args, method='RK45')
+            pt = x[-1,vi]
             if pt<xrange[1] and pt>xrange[0]:
                 x = var_apply(x,var)
                 ax.plot(p,pt,'b.', markersize=msize); 
-            x = solve(system, -t, [xini], args=args, method='RK45')
-            pt = x[-1,0]
+            x = solve(system, -t, xini, args=args, method='RK45')
+            pt = x[-1,vi]
             if pt<xrange[1] and pt>xrange[0]:
                 x = var_apply(x,var)
                 ax.plot(p,pt,'r.', markersize=msize); 
@@ -315,7 +316,7 @@ def solve_plot2D_nulclinas(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],metho
     ax.set_xlim(ranges[0])
     ax.set_ylim(ranges[1])
 
-    
+
 def solve_plot2D_linear(A,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
     t = np.arange(0, tmax, dt)
     pars = {'a':A[0,0],'b':A[0,1],'c':A[1,0],'d':A[1,1]}
@@ -354,7 +355,7 @@ def solve_plot2D_linear(A,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45
     axs[1].set_xlim(ranges[0])
     axs[1].set_ylim(ranges[1])
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels) 
-        
+
 # doble oscilador    
 def plot4D_test(t,x_test):    
     plot_kws = dict(linewidth=2)
@@ -390,12 +391,12 @@ def plot4D_labels(t,x,labels,ranges,curves=[]):
     # bifurcaciones
     for c in curves:
         axs[1,1].plot(c[0],c[1])        
-        
+
 def testsim(model,func,t,x0, method='DOP853'):
     x_test = solve(func, t, x0, method=method)
     x_sim = model.simulate(x0, t)
     return x_test, x_sim
-    
+
 def plot2D_testsim(t,x_test,x_sim):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 2, figsize=(18, 8))
@@ -409,7 +410,7 @@ def plot2D_testsim(t,x_test,x_sim):
     axs[1].plot(x_sim[:, 0], x_sim[:, 1], "k--", label="model", **plot_kws)
     axs[1].legend()
     axs[1].set(xlabel="$x_1$", ylabel="$x_2$")
-    
+
 def train_mu(mu_stable, mu_unstable, func, t, x0_stable, x0_unstable, eps, method='DOP853'):
     n_ics = mu_stable.size + 2 * mu_unstable.size
     x_train = [np.zeros((t.size, 3)) for i in range(n_ics)]
@@ -471,5 +472,5 @@ def plot3D_testsim(x_test,x_sim):
         else:
             ax.plot(x_sim[i][:, 2], x_sim[i][:, 0], x_sim[i][:, 1], "b", **plot_kws)
     ax.set(title="Identified System", xlabel="$\mu$", ylabel="x", zlabel="y")
-    
+
 
