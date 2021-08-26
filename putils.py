@@ -4,11 +4,14 @@ import matplotlib.gridspec as gridspec
 import matplotlib.colors as mcolors
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.spatial.distance import pdist,squareform
 from scipy.signal import find_peaks
 from scipy.fft import fft
 from mpl_toolkits.mplot3d import Axes3D
 
 def solve(func,t,x0,method='DOP853',args=None):
+    """ Simple function for calling solve_ivp with system func, initial condition  x0 and time evaluation t
+    """ 
     dt = np.abs(t[1]-t[0])
     sol = solve_ivp(func, t[[0,-1]], x0, method=method, t_eval=t, args=args,max_step=dt,dense_output=True)
     if sol.status < 0:
@@ -16,6 +19,8 @@ def solve(func,t,x0,method='DOP853',args=None):
     return sol.y.T
 
 def var_apply(x,var):
+    """ Custom function for applying function in string var to array x
+    """
     if var=='angle':
         return (x+np.pi)%(2*np.pi)-np.pi
     if var=='cos':
@@ -26,6 +31,8 @@ def var_apply(x,var):
         return x
 
 def findperiod(t,x):
+    """ Simple function for finding mean period of signal x(t)
+    """    
     peaks, _ = find_peaks(x)
     per = np.diff(t[peaks])
     return np.mean(per)
@@ -41,6 +48,7 @@ def map_plot(f, xini, N, *pars):
             xn.append(x)
         ax.plot(xn,'-o');
     plt.grid()  
+    plt.show()
 
 def cobweb(f, xini, N, *pars, fscale=1.25):
     '''
@@ -76,6 +84,7 @@ def cobweb(f, xini, N, *pars, fscale=1.25):
         ax.yaxis.set_ticks_position('left')
     ax.spines['bottom'].set_position('zero')
     ax.xaxis.set_ticks_position('bottom')
+    plt.show()
 
 def orbitdiag(f, xini, Tini, Tfin, parlist, fscale=1,msize=5,AMAX=1e2,alphaval=1):
     ''' Grafica el diagrama de orbitas del mapa dado por f para las condiciones iniciales 
@@ -100,6 +109,7 @@ def orbitdiag(f, xini, Tini, Tfin, parlist, fscale=1,msize=5,AMAX=1e2,alphaval=1
                 xmax = max(np.max(xn),xmax)
                 xmin = min(np.min(xn),xmin)
     ax.set_ylim([xmin*fscale,xmax*fscale])
+    plt.show()
 
 # # Flujos    
 
@@ -114,20 +124,21 @@ def plot2D_test(t,x_test):
     axs[1].plot(x_test[:, 0], x_test[:, 1], "r", label="$x_k$", **plot_kws)
     axs[1].legend()
     axs[1].set(xlabel="$x_0$", ylabel="$x_1$")
+    plt.show()
 
-
-def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]]):    
+def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]],var=[0,1]):    
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 2, figsize=(18, 8))
-    axs[0].plot(t, x[:, 0], "r", label="$x_0$", **plot_kws)
-    axs[0].plot(t, x[:, 1], "b", label="$x_1$", alpha=0.4, **plot_kws)
+    for n in range(len(x[0,:])):
+        axs[0].plot(t, x[:,n], label='x_'+str(n), alpha=1-n*0.2,**plot_kws)
     axs[0].legend()
     axs[0].set(xlabel="t", ylabel="$x_k$")
-    axs[1].plot(x[:, 0], x[:, 1], "r", label="$x_k$", **plot_kws)
+    axs[1].plot(x[:,var[0]], x[:,var[1]], "r", label="$x_k$", **plot_kws)
     axs[1].legend()
-    axs[1].plot(x[0, 0], x[0, 1], "ro")
-    axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
+    axs[1].plot(x[0,var[0]], x[0,var[1]], "ro")
+    axs[1].set(xlabel='x_'+str(var[0]), ylabel='x_'+str(var[1]),title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs[1].grid()
+    plt.show()
 
 def plot1D_labels(t,x,labels,ranges=[-1,1],var=''):    
     plot_kws = dict(linewidth=2)
@@ -136,6 +147,7 @@ def plot1D_labels(t,x,labels,ranges=[-1,1],var=''):
     axs.set(xlabel="$t$", ylabel=var+' x',title=labels) 
     axs.legend()
     axs.grid()    
+    plt.show()
 
 def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):    
     plot_kws = dict(linewidth=2)
@@ -153,6 +165,7 @@ def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):
     axs[1].plot(f, 20*np.log10(y), "r", label="$fft$", **plot_kws)
     axs[1].legend()
     axs[1].set(xlabel="t", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])        
+    plt.show()
 
 def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):    
     plot_kws = dict(linewidth=2)
@@ -183,13 +196,19 @@ def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):
     axs2.plot(f, 20*np.log10(y1), "b", label="$fft(x_1)$", alpha=0.4, **plot_kws)
     axs2.legend()
     axs2.set(xlabel="f", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])    
+    plt.show()
 
 
-def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],wfft=False,var='',method='RK45',trans=None,fmax=None):
+def solve_plot(system,pars,xini,tmax,dt,ranges=None,wfft=False,var='',method='RK45',trans=None,fmax=None):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
     x = solve(system, t, xini, args=args, method=method)
+    if ranges is None:
+        if len(xini)==1:
+            ranges = [np.min(x[:,0]),np.max(x[:,0])]
+        else:
+            ranges = [[np.min(x[:,0]),np.max(x[:,0])],[np.min(x[:,1]),np.max(x[:,1])]]
     if trans is not None:
         t0 = int(trans/dt)
         x = x[t0:,:]
@@ -205,6 +224,10 @@ def solve_plot(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],wfft=False,var=''
             plot2D_labels_fft(t,x,labels,ranges,fmax)
         else:    
             plot2D_labels(t,x,labels,ranges)  
+    plt.show()
+
+    
+
 
 def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1],var=None,method='RK45'):
     t = np.arange(0, tmax, dt)
@@ -218,7 +241,8 @@ def solve_plot1D_multiple(system,pars,xini_array,tmax,dt,xrange=[-1,1],var=None,
         x = var_apply(x,var)
         axs.plot(t[:len(x)], x[:, 0], **plot_kws)
         axs.set_ylim(xrange)
-    axs.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
+    axs.set(xlabel="$t$", ylabel="$x_0$",title=labels)
+    plt.show()
 
 
 def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0,var=None,method='RK45'):
@@ -241,7 +265,8 @@ def solve_plot1D_dual(system,pars,xini,tmax,dt,xrange=[-1,1],fmax=1.0,var=None,m
     axs[1].set(xlabel="$t$", ylabel="$x_0$",title=labels) 
     axs[1].legend()
     axs[1].set_ylim(xrange)
-    axs[1].grid()   
+    axs[1].grid()
+    plt.show()
 
 # diagrama de bifurcaciones para flujos 1D y 2D
 def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,vi=0,xrange=[-1,1],msize=5,var=None,method='RK45'):
@@ -268,14 +293,15 @@ def bifurcation_diag(system, pars, xini_list, tmax, dt, parval, parlist,vi=0,xra
             pt = x[-1,vi]
             if pt<xrange[1] and pt>xrange[0]:
                 x = var_apply(x,var)
-                ax.plot(p,pt,'r.', markersize=msize); 
+                ax.plot(p,pt,'r.', markersize=msize);
+    plt.show()
 
 
 def solve_plot2D_multiple(system,pars,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
-    plot_kws = dict(linewidth=2)
+    plot_kws = dict(linewidth=0.5)
     fig = plt.figure(figsize=(18, 8))
     gd = gridspec.GridSpec(2, 2)
     axs1 = plt.subplot(gd[0,0])
@@ -294,7 +320,8 @@ def solve_plot2D_multiple(system,pars,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],
         axs3.set_ylim(ranges[1])
     axs1.set(xlabel="$t$", ylabel="$x_0$",title=labels) 
     axs2.set(xlabel="$t$", ylabel="$x_1$",title=labels) 
-    axs3.set(xlabel="$x_0$", ylabel="$x_1$",title=labels) 
+    axs3.set(xlabel="$x_0$", ylabel="$x_1$",title=labels)
+    plt.show()
 
 def solve_plot2D_nulclinas(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
     t = np.arange(0, tmax, dt)
@@ -307,14 +334,103 @@ def solve_plot2D_nulclinas(system,pars,xini,tmax,dt,ranges=[[-1,1],[-1,1]],metho
     yrange = np.arange(ranges[1][0],ranges[1][1], delta)
     X, Y = np.meshgrid(xrange,yrange)
     Z = system(0,[X,Y],*args)
-    ax.contour(xrange,yrange,Z[0],[0])
-    ax.contour(xrange,yrange,Z[1],[0])
+    ax.contourf(xrange,yrange,Z[0],levels=[-1000,0,1000],alpha=0.1,colors=('r','g'))
+    ax.contourf(xrange,yrange,Z[1],levels=[-1000,0,1000],alpha=0.1,colors=('b','y'))
+    ax.contour(xrange,yrange,Z[0],[0],colors='r')
+    ax.contour(xrange,yrange,Z[1],[0],colors='b')
     ax.grid()  
     x = solve(system, t, xini, args=args, method=method)
-    ax.plot(x[:, 0], x[:, 1], **plot_kws)
+    ax.plot(x[:, 0], x[:, 1], 'k', **plot_kws)
     ax.set(xlabel="$x$", ylabel="$y$",title=labels)
     ax.set_xlim(ranges[0])
     ax.set_ylim(ranges[1])
+    plt.show()
+
+def solve_plot2D_quiver(system,pars,dx,dy,xini=None,tmax=0,dt=0,scale=None,ranges=[[-1,1],[-1,1]],method='RK45'):
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    plot_kws = dict(width=0.001)
+    fig, ax = plt.subplots(figsize=(20,15))
+    delta = (ranges[0][1]-ranges[0][0])/100
+    xrange = np.arange(ranges[0][0],ranges[0][1], delta)
+    yrange = np.arange(ranges[1][0],ranges[1][1], delta)
+    X, Y = np.meshgrid(xrange,yrange)
+    Z = system(0,[X,Y],*args)
+    ax.contourf(xrange,yrange,Z[0],levels=[-1000,0,1000],alpha=0.1,colors=('r','g'))
+    ax.contourf(xrange,yrange,Z[1],levels=[-1000,0,1000],alpha=0.1,colors=('b','y'))
+    ax.contour(xrange,yrange,Z[0],[0],colors='r')
+    ax.contour(xrange,yrange,Z[1],[0],colors='b')
+    ax.grid()  
+    x = np.arange(ranges[0][0],ranges[0][1], dx)
+    y = np.arange(ranges[1][0],ranges[1][1], dy)
+    X, Y = np.meshgrid(x,y)
+    UV = system(0,[X,Y],*args)
+    r = np.power(np.add(np.power(UV[0],2), np.power(UV[1],2)),0.5)
+    ax.quiver(X,Y,UV[0]/r,UV[1]/r, scale=scale,**plot_kws) 
+    ax.set(xlabel="$x$", ylabel="$y$",title=labels)
+    if xini is not None:
+        t = np.arange(0, tmax, dt)
+        x = solve(system, t, xini, args=args, method=method)
+        ax.plot(x[:, 0], x[:, 1],'k')
+    ax.set_xlim(ranges[0])
+    ax.set_ylim(ranges[1])
+    plt.show()    
+
+
+def recurrence_plot(system,pars,xini,tmax,dt,var=0,eps=1e-6,method='RK45',trans=None,period=None):
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    xv = solve(system, t, xini, args=args, method=method)
+    x = xv[:,var]
+    if trans is not None:
+        t0 = int(trans/dt)
+        x = x[t0:]
+        t = t[t0:]
+    steps = 10    
+    dst = pdist(xv[t0:,:])
+    dst = np.floor(dst/eps)/steps
+    dst[dst>steps] = steps
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
+    axs[0].plot(t, x, "r", label="$x$", **plot_kws)
+    axs[0].legend()
+    axs[0].grid()
+    axs[0].set(xlabel="t", ylabel="$x$")
+    if period is not None:
+        ncycles = int(np.ceil((t[-1]-t[0])/period))
+        for n in range(ncycles):
+            axs[1].plot(t,t-n*period,'r',linewidth=0.3)
+            axs[1].plot(t,t+n*period,'r',linewidth=0.3)
+    axs[1].set_xlim([t[0],t[-1]])
+    axs[1].set_ylim([t[0],t[-1]])
+    axs[1].contour(t,t,squareform(dst))
+    axs[1].set(xlabel="$t$", ylabel="$t$",title=labels)
+    plt.show()        
+
+def butterfly(system,pars,xini,tmax,dt,eps=1e-6,method='RK45'):
+    """ Calcula la divergencia entre dos condiciones iniciales en 
+    xini y xini + eps. Grafica las dos primeras variables y la distancia euclidiana 
+    en funcion del tiempo para mostra el efecto 'mariposa'
+    """
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    x1 = solve(system, t, xini, args=args, method=method)
+    xini[0] = xini[0]+eps
+    x2 = solve(system, t, xini, args=args, method=method)
+    dx = np.linalg.norm(x2-x1,axis=-1)
+    plot_kws = dict(linewidth=0.5)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))    
+    axs[0].plot(x1[:,0],x1[:,1], "r", label="$x1$", **plot_kws)
+    axs[0].plot(x2[:,0],x2[:,1], "b", label="$x2$", **plot_kws)
+    axs[0].legend()
+    axs[0].grid()
+    axs[0].set(xlabel="x", ylabel="$y$")
+    axs[1].semilogy(t,dx, "r", label="$dist$", **plot_kws)
+    axs[1].set(xlabel="$t$", ylabel="$dist$",title=labels)
+    plt.show()        
+
 
 
 def solve_plot2D_linear(A,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45'):
@@ -354,7 +470,28 @@ def solve_plot2D_linear(A,xini_array,tmax,dt,ranges=[[-1,1],[-1,1]],method='RK45
         axs[1].plot(x[:, 0], x[:, 1], **plot_kws)
     axs[1].set_xlim(ranges[0])
     axs[1].set_ylim(ranges[1])
-    axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels) 
+    axs[1].set(xlabel="$x_0$", ylabel="$x_1$",title=labels)
+    plt.show()
+
+def butterfly(system,pars,xini,tmax,dt,eps=1e-6,method='RK45'):
+    t = np.arange(0, tmax, dt)
+    args = tuple(pars.values())
+    labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
+    x1 = solve(system, t, xini, args=args, method=method)
+    xini[0] = xini[0]+eps
+    x2 = solve(system, t, xini, args=args, method=method)
+    dx = np.linalg.norm(x2-x1,axis=-1)
+    plot_kws = dict(linewidth=0.5)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))    
+    axs[0].plot(x1[:,0],x1[:,1], "r", label="$x1$", **plot_kws)
+    axs[0].plot(x2[:,0],x2[:,1], "b", label="$x2$", **plot_kws)
+    axs[0].legend()
+    axs[0].grid()
+    axs[0].set(xlabel="x", ylabel="$y$")
+    axs[1].semilogy(t,dx, "r", label="$dist$", **plot_kws)
+    axs[1].set(xlabel="$t$", ylabel="$dist$",title=labels)
+    plt.show()        
+
 
 # doble oscilador    
 def plot4D_test(t,x_test):    
@@ -371,6 +508,7 @@ def plot4D_test(t,x_test):
         axs[n,1].plot(x_test[:, 2*n+0], x_test[:, 2*n+1], "r", label=xa + xb, **plot_kws)
         axs[n,1].legend()
         axs[n,1].set(xlabel=xa, ylabel=xb)  
+    plt.show()
 
 def plot4D_labels(t,x,labels,ranges,curves=[]):    
     plot_kws = dict(linewidth=2)
@@ -391,6 +529,7 @@ def plot4D_labels(t,x,labels,ranges,curves=[]):
     # bifurcaciones
     for c in curves:
         axs[1,1].plot(c[0],c[1])        
+    plt.show()
 
 def testsim(model,func,t,x0, method='DOP853'):
     x_test = solve(func, t, x0, method=method)
@@ -410,6 +549,7 @@ def plot2D_testsim(t,x_test,x_sim):
     axs[1].plot(x_sim[:, 0], x_sim[:, 1], "k--", label="model", **plot_kws)
     axs[1].legend()
     axs[1].set(xlabel="$x_1$", ylabel="$x_2$")
+    plt.show()
 
 def train_mu(mu_stable, mu_unstable, func, t, x0_stable, x0_unstable, eps, method='DOP853'):
     n_ics = mu_stable.size + 2 * mu_unstable.size
@@ -472,5 +612,5 @@ def plot3D_testsim(x_test,x_sim):
         else:
             ax.plot(x_sim[i][:, 2], x_sim[i][:, 0], x_sim[i][:, 1], "b", **plot_kws)
     ax.set(title="Identified System", xlabel="$\mu$", ylabel="x", zlabel="y")
-
+    plt.show()
 
