@@ -31,15 +31,17 @@ def var_apply(x,var):
         return x
 
 def findperiod(t,x):
-    """ Simple function for finding mean period of signal x(t)
+    """ Simple function for finding mean period of signal x(t) with a single peak for cycle
     """    
     peaks, _ = find_peaks(x)
     per = np.diff(t[peaks])
     return np.mean(per)
 
-# # MAPAS
+### MAPS
 
 def map_plot(f, xini, N, *pars):
+    """ 2D Plot of a map defined by f (and parameters *pars) with initial condition xini and N steps
+    """
     fig, ax = plt.subplots(figsize=(20,5))
     for x in xini:
         xn = [x]
@@ -52,7 +54,7 @@ def map_plot(f, xini, N, *pars):
 
 def cobweb(f, xini, N, *pars, fscale=1.25):
     '''
-    Hace el grafico cobweb de la funcion f para la condicion inicial x0 durante N iteraciones del mapa
+    Cobweb Plot of the map defined by f (and parameters *pars) with initial condition xini and N steps
     '''
     if type(xini) not in [list,np.ndarray]:
         xini = [xini]
@@ -111,45 +113,24 @@ def orbitdiag(f, xini, Tini, Tfin, parlist, fscale=1,msize=5,AMAX=1e2,alphaval=1
     ax.set_ylim([xmin*fscale,xmax*fscale])
     plt.show()
 
-# # Flujos    
+### FLOWS
 
-
-def plot2D_test(t,x_test):    
+def plot1D_labels(t,x,labels,ranges=[-1,1],varname=None):    
+    """ Time evolution, x vs t plot with labels
+    """
     plot_kws = dict(linewidth=2)
-    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
-    axs[0].plot(t, x_test[:, 0], "r", label="$x_0$", **plot_kws)
-    axs[0].plot(t, x_test[:, 1], "b", label="$x_1$", alpha=0.4, **plot_kws)
-    axs[0].legend()
-    axs[0].set(xlabel="t", ylabel="$x_k$")
-    axs[1].plot(x_test[:, 0], x_test[:, 1], "r", label="$x_k$", **plot_kws)
-    axs[1].legend()
-    axs[1].set(xlabel="$x_0$", ylabel="$x_1$")
-    plt.show()
-
-def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]],var=[0,1]):    
-    plot_kws = dict(linewidth=2)
-    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
-    for n in range(len(x[0,:])):
-        axs[0].plot(t, x[:,n], label='x_'+str(n), alpha=1-n*0.2,**plot_kws)
-    axs[0].legend()
-    axs[0].set(xlabel="t", ylabel="$x_k$")
-    axs[1].plot(x[:,var[0]], x[:,var[1]], "r", label="$x_k$", **plot_kws)
-    axs[1].legend()
-    axs[1].plot(x[0,var[0]], x[0,var[1]], "ro")
-    axs[1].set(xlabel='x_'+str(var[0]), ylabel='x_'+str(var[1]),title=labels,xlim=ranges[0],ylim=ranges[1])    
-    axs[1].grid()
-    plt.show()
-
-def plot1D_labels(t,x,labels,ranges=[-1,1],var=''):    
-    plot_kws = dict(linewidth=2)
+    if varname is None:
+        varname = 'x'
     fig, axs = plt.subplots(1, 1, figsize=(18, 8))
-    axs.plot(t, x[:, 0], "b", label=var+' x', **plot_kws)
-    axs.set(xlabel="$t$", ylabel=var+' x',title=labels) 
+    axs.plot(t, x[:, 0], "b", label=varname, **plot_kws)
+    axs.set(xlabel="$t$", ylabel=varname,title=labels,ylim=ranges) 
     axs.legend()
     axs.grid()    
     plt.show()
 
-def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):    
+def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):
+    """ Time evolution and FFT spectrum of single variable x
+    """
     plot_kws = dict(linewidth=2)
     fig, axs = plt.subplots(1, 2, figsize=(18, 8))
     axs[0].plot(t, x[:,0], "r", label=var+' x', **plot_kws)
@@ -167,20 +148,39 @@ def plot1D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],var='',fmax=None):
     axs[1].set(xlabel="t", ylabel="$fft amplitude (dB)$",title="FFT transform",xlim=[0,fmax])        
     plt.show()
 
-def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):    
+def plot2D_labels(t,x,labels,ranges=[[-1,1],[-1,1]],var=[0,1]): 
+    """ Time evolution and phase plot of variables x[var[0]], x[var[1]]
+    """
+    plot_kws = dict(linewidth=2)
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8))
+    for n in range(len(x[0,:])):
+        axs[0].plot(t, x[:,n], label='x_'+str(n), alpha=1-n*0.2,**plot_kws)
+    axs[0].legend()
+    axs[0].set(xlabel="t", ylabel="$x_k$")
+    axs[1].plot(x[:,var[0]], x[:,var[1]], "r", label="$x_k$", **plot_kws)
+    axs[1].legend()
+    axs[1].plot(x[0,var[0]], x[0,var[1]], "ro")
+    axs[1].set(xlabel='x_'+str(var[0]), ylabel='x_'+str(var[1]),title=labels,xlim=ranges[0],ylim=ranges[1])    
+    axs[1].grid()
+    plt.show()
+
+
+def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None,var=[0,1]):    
+    """ Time evolution, Phase plot and FFT spectrum of variables x[var[0]], x[var[1]]
+    """
     plot_kws = dict(linewidth=2)
     fig = plt.figure(figsize=(18, 8))
     gd = gridspec.GridSpec(2, 2)
     axs1 = plt.subplot(gd[0,0])
     axs2 = plt.subplot(gd[1,0])
     axs3 = plt.subplot(gd[:,1])
-    axs1.plot(t, x[:, 0], "r", label="$x_0$", **plot_kws)
-    axs1.plot(t, x[:, 1], "b", label="$x_1$", alpha=0.4, **plot_kws)
+    axs1.plot(t, x[:, var[0]], "r", label="$x_0$", **plot_kws)
+    axs1.plot(t, x[:, var[1]], "b", label="$x_1$", alpha=0.4, **plot_kws)
     axs1.legend()
     axs1.set(xlabel="t", ylabel="$x_k$")
-    axs3.plot(x[:, 0], x[:, 1], "r", label="$x_k$", **plot_kws)
+    axs3.plot(x[:, var[0]], x[:, var[1]], "r", label="$x_k$", **plot_kws)
     axs3.legend()
-    axs3.plot(x[0, 0], x[0, 1], "ro")
+    axs3.plot(x[0, var[0]], x[0, var[1]], "ro")
     axs3.set(xlabel="$x_0$", ylabel="$x_1$",title=labels,xlim=ranges[0],ylim=ranges[1])    
     axs3.grid()
     fnyq = 0.5/(t[1]-t[0])
@@ -188,8 +188,8 @@ def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):
         fmax=fnyq
     df = 2*fnyq/len(t)
     f = np.arange(0,fnyq,df)
-    y0 = np.abs(fft(x[:,0]))
-    y1 = np.abs(fft(x[:,1]))
+    y0 = np.abs(fft(x[:,var[0]]))
+    y1 = np.abs(fft(x[:,var[1]]))
     y0 = y0[:len(f)]
     y1 = y1[:len(f)]
     axs2.plot(f, 20*np.log10(y0), "r", label="$fft(x_0)$", **plot_kws)
@@ -199,7 +199,8 @@ def plot2D_labels_fft(t,x,labels,ranges=[[-1,1],[-1,1]],fmax=None):
     plt.show()
 
 
-def solve_plot(system,pars,xini,tmax,dt,ranges=None,wfft=False,var='',method='RK45',trans=None,fmax=None):
+
+def solve_plot(system,pars,xini,tmax,dt,ranges=None,wfft=False,var=None,method='RK45',trans=None,fmax=None):
     t = np.arange(0, tmax, dt)
     args = tuple(pars.values())
     labels = ','.join([it[0]+ ' = ' + str(it[1]) for it in pars.items()])
@@ -492,6 +493,8 @@ def butterfly(system,pars,xini,tmax,dt,eps=1e-6,method='RK45'):
     axs[1].set(xlabel="$t$", ylabel="$dist$",title=labels)
     plt.show()        
 
+
+### SINDY
 
 # doble oscilador    
 def plot4D_test(t,x_test):    
